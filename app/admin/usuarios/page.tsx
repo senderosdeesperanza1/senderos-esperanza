@@ -125,7 +125,7 @@ export default function UsuariosAdmin() {
           errorData.error.includes("El correo ya está registrado")
         ) {
           alert(
-            "Error: El correo electrónico ya está registrado. Por favor, utiliza otro."
+            "Error: El correo electrónico ya está registrado. Por favor, utiliza otro.",
           );
         } else {
           alert("Ocurrió un error al guardar el usuario.");
@@ -152,7 +152,7 @@ export default function UsuariosAdmin() {
   const handleDelete = async (id: string) => {
     if (
       confirm(
-        "¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer."
+        "¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.",
       )
     ) {
       try {
@@ -187,7 +187,7 @@ export default function UsuariosAdmin() {
 
   const totalAdmins = usuarios.filter((u) => u.rol === "admin").length;
   const totalCoordinadores = usuarios.filter(
-    (u) => u.rol === "coordinador"
+    (u) => u.rol === "coordinador",
   ).length;
   const usuariosActivos = usuarios.filter((u) => u.estado === "activo").length;
 
@@ -478,8 +478,8 @@ export default function UsuariosAdmin() {
                             usuario.rol === "admin"
                               ? "default"
                               : usuario.rol === "coordinador"
-                              ? "secondary"
-                              : "outline"
+                                ? "secondary"
+                                : "outline"
                           }
                         >
                           {usuario.rol === "admin" && (
@@ -508,6 +508,7 @@ export default function UsuariosAdmin() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleEdit(usuario)}
+                            className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border-yellow-200"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -518,6 +519,7 @@ export default function UsuariosAdmin() {
                             disabled={
                               usuario.rol === "admin" && totalAdmins === 1
                             }
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

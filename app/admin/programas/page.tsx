@@ -142,7 +142,7 @@ export default function ProgramasAdmin() {
   const programasActivos = programas.filter((p) => p.activo).length;
   const totalBeneficiarios = programas.reduce(
     (sum, p) => sum + p.beneficiarios,
-    0
+    0,
   );
   const presupuestoTotal = programas.reduce((sum, p) => sum + p.presupuesto, 0);
 
@@ -440,16 +440,16 @@ export default function ProgramasAdmin() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-1"
                       onClick={() => handleEdit(programa)}
+                      className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border-yellow-200"
                     >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Editar
+                      <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleDelete(programa.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

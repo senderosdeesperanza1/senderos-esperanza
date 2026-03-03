@@ -6,20 +6,20 @@ import { pool } from "@/lib/db";
 // =========================
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const [rows]: any = await pool.execute(
       "SELECT * FROM usuarios WHERE id = ? LIMIT 1",
-      [id]
+      [id],
     );
 
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -35,12 +35,12 @@ export async function GET(
         ultimoAcceso: u.ultimo_acceso,
         fechaCreacion: u.fecha_creacion,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error: any) {
     return NextResponse.json(
       { error: "Error interno", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -50,10 +50,10 @@ export async function GET(
 // =========================
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     const { nombre, email, rol, estado, password } = body;
@@ -61,13 +61,13 @@ export async function PUT(
     // Obtener usuario actual
     const [rows]: any = await pool.execute(
       "SELECT * FROM usuarios WHERE id = ? LIMIT 1",
-      [id]
+      [id],
     );
 
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -82,13 +82,13 @@ export async function PUT(
       `UPDATE usuarios 
         SET nombre = ?, email = ?, rol = ?, estado = ?, password = ?
         WHERE id = ?`,
-      [nombre, email, rol, estado, newPassword, id]
+      [nombre, email, rol, estado, newPassword, id],
     );
 
     // Después de actualizar, obtener el usuario actualizado para devolverlo
     const [updatedRows]: any = await pool.execute(
       "SELECT * FROM usuarios WHERE id = ? LIMIT 1",
-      [id]
+      [id],
     );
 
     const updatedUser = updatedRows[0];
@@ -103,12 +103,12 @@ export async function PUT(
         ultimoAcceso: updatedUser.ultimo_acceso,
         fechaCreacion: updatedUser.fecha_creacion,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error: any) {
     return NextResponse.json(
       { error: "Error al actualizar usuario", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -118,21 +118,21 @@ export async function PUT(
 // =========================
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Verificar existencia
     const [rows]: any = await pool.execute(
       "SELECT id, rol FROM usuarios WHERE id = ? LIMIT 1",
-      [id]
+      [id],
     );
 
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -141,12 +141,12 @@ export async function DELETE(
     // Evitar borrar último admin
     if (usuario.rol === "admin") {
       const [admins]: any = await pool.execute(
-        "SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'admin'"
+        "SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'admin'",
       );
       if (admins[0].total <= 1) {
         return NextResponse.json(
           { error: "No se puede eliminar el último administrador" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -156,12 +156,12 @@ export async function DELETE(
 
     return NextResponse.json(
       { success: true, message: "Usuario eliminado exitosamente" },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error: any) {
     return NextResponse.json(
       { error: "Error al eliminar usuario", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

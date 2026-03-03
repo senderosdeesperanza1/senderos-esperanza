@@ -45,6 +45,12 @@ import {
   Download,
   Edit,
   Trash2,
+  Loader2,
+  FileSpreadsheet,
+  Briefcase,
+  MapPin,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -58,12 +64,11 @@ interface Voluntario {
   telefono: string;
   cedula: string;
   direccion: string;
-  fechaNacimiento: string;
+  fecha_nacimiento: string;
   profesion: string;
   disponibilidad: string;
   estado: string;
-  programa: number; // ID del programa
-  programaNombre?: string; // Nombre del programa (opcional, desde el JOIN)
+  programa: string;
   fecha_creacion: string;
 }
 
@@ -73,19 +78,20 @@ export default function VoluntariosAdmin() {
   const [filtro, setFiltro] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    nombres: "",
-    apellidos: "",
+    nombre: "",
+    apellido: "",
     email: "",
     telefono: "",
     cedula: "",
     direccion: "",
-    fechaNacimiento: "",
+    fecha_nacimiento: "",
     profesion: "",
     disponibilidad: "",
+    programa: "",
     estado: "activo",
-    programaId: "",
   });
 
   const profesiones = [
@@ -95,30 +101,41 @@ export default function VoluntariosAdmin() {
     "Trabajador Social",
     "Médico",
     "Enfermero",
+    "Pedagogica",
+    "Eduacacion Fisica",
+    "Nutricion",
   ];
 
   useEffect(() => {
-    cargarVoluntarios();
-    cargarProgramas();
+    const init = async () => {
+      setIsLoading(true);
+      await Promise.all([cargarVoluntarios(), cargarProgramas()]);
+      setIsLoading(false);
+    };
+    init();
   }, []);
 
   const cargarVoluntarios = async () => {
     try {
       const response = await fetch("/api/voluntarios");
+      if (!response.ok) throw new Error("Error al cargar voluntarios");
       const data = await response.json();
       setVoluntarios(data);
     } catch (error) {
-      console.log("[v0] Error loading volunteers:", error);
+      console.error("Error loading volunteers:", error);
+      toast.error("Error al cargar la lista de voluntarios");
     }
   };
 
   const cargarProgramas = async () => {
     try {
       const response = await fetch("/api/programas");
+      if (!response.ok) throw new Error("Error al cargar programas");
       const data = await response.json();
       setProgramas(data);
     } catch (error) {
-      console.log("[v0] Error loading programs:", error);
+      console.error("Error loading programs:", error);
+      toast.error("Error al cargar los programas");
     }
   };
 
@@ -139,7 +156,9 @@ export default function VoluntariosAdmin() {
 
       if (response.ok) {
         toast.success(
-          `Voluntario ${editingId ? "actualizado" : "creado"} exitosamente.`
+          `El voluntario ${formData.nombre} ${formData.apellido} ha sido ${
+            editingId ? "actualizado" : "creado"
+          } exitosamente.`,
         );
         await cargarVoluntarios();
         setDialogOpen(false);
@@ -149,7 +168,7 @@ export default function VoluntariosAdmin() {
         // Solución Profesional: Manejar el error de la API y mostrarlo al usuario.
         const errorData = await response.json();
         toast.error(
-          `Error: ${errorData.error || "No se pudo guardar el voluntario."}`
+          `Error: ${errorData.error || "No se pudo guardar el voluntario."}`,
         );
       }
     } catch (error) {
@@ -160,58 +179,63 @@ export default function VoluntariosAdmin() {
   const handleEdit = (voluntario: Voluntario) => {
     setEditingId(voluntario.id);
     setFormData({
-      nombres: voluntario.nombre,
-      apellidos: voluntario.apellido,
+      nombre: voluntario.nombre,
+      apellido: voluntario.apellido,
       email: voluntario.email,
       telefono: voluntario.telefono,
       cedula: voluntario.cedula,
       direccion: voluntario.direccion,
       // Solución Profesional: Formatear la fecha a YYYY-MM-DD para el input type="date"
-      fechaNacimiento: voluntario.fechaNacimiento
-        ? new Date(voluntario.fechaNacimiento).toISOString().split("T")[0]
+      fecha_nacimiento: voluntario.fecha_nacimiento
+        ? new Date(voluntario.fecha_nacimiento).toISOString().split("T")[0]
         : "",
       profesion: voluntario.profesion,
       disponibilidad: voluntario.disponibilidad,
+      programa: voluntario.programa,
       estado: voluntario.estado,
-      programaId: String(voluntario.programa || ""),
     });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("¿Estás seguro de eliminar este voluntario?")) {
+    if (
+      confirm(
+        "¿Estás seguro de que deseas eliminar este voluntario? Esta acción no se puede deshacer.",
+      )
+    ) {
       try {
         await fetch(`/api/voluntarios/${id}`, { method: "DELETE" });
+        toast.success("Voluntario eliminado correctamente");
         await cargarVoluntarios();
       } catch (error) {
-        console.log("[v0] Error deleting volunteer:", error);
+        toast.error("Error al eliminar el voluntario");
       }
     }
   };
 
   const resetForm = () => {
     setFormData({
-      nombres: "",
-      apellidos: "",
+      nombre: "",
+      apellido: "",
       email: "",
       telefono: "",
       cedula: "",
       direccion: "",
-      fechaNacimiento: "",
+      fecha_nacimiento: "",
       profesion: "",
       disponibilidad: "",
+      programa: "",
       estado: "activo",
-      programaId: "",
     });
   };
 
   const voluntariosFiltrados = voluntarios.filter((voluntario) => {
     const matchFiltro =
-      voluntario.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
-      voluntario.email.toLowerCase().includes(filtro.toLowerCase()) ||
-      voluntario.cedula.includes(filtro) ||
-      (voluntario.apellido &&
-        voluntario.apellido.toLowerCase().includes(filtro.toLowerCase()));
+      (voluntario.nombre?.toLowerCase() || "").includes(filtro.toLowerCase()) ||
+      (voluntario.email?.toLowerCase() || "").includes(filtro.toLowerCase()) ||
+      voluntario.cedula?.includes(filtro) ||
+      false ||
+      (voluntario.apellido?.toLowerCase() || "").includes(filtro.toLowerCase());
 
     const matchEstado =
       estadoFiltro === "todos" || voluntario.estado === estadoFiltro;
@@ -220,45 +244,76 @@ export default function VoluntariosAdmin() {
   });
 
   const voluntariosActivos = voluntarios.filter(
-    (v) => v.estado === "activo"
+    (v) => v.estado === "activo",
   ).length;
   const voluntariosInactivos = voluntarios.filter(
-    (v) => v.estado === "inactivo"
+    (v) => v.estado === "inactivo",
   ).length;
 
   const exportarCSV = () => {
     const headers = [
-      "Nombre",
+      "Nombres",
+      "Apellidos",
+      "Cédula",
       "Email",
       "Teléfono",
-      "Cédula",
+      "Dirección",
+      "Fecha Nacimiento",
       "Profesión",
+      "Disponibilidad",
       "Programa",
       "Estado",
       "Fecha Registro",
     ];
-    const rows = voluntariosFiltrados.map((v: Voluntario) => [
-      `${v.nombre} ${v.apellido}`,
+
+    // Función auxiliar para escapar campos que puedan contener comas o comillas
+    const escapeCsvField = (field: any) => {
+      if (field === null || field === undefined) return "";
+      const stringField = String(field);
+      if (
+        stringField.includes(";") ||
+        stringField.includes('"') ||
+        stringField.includes("\n")
+      ) {
+        return `"${stringField.replace(/"/g, '""')}"`;
+      }
+      return stringField;
+    };
+
+    const rows = voluntariosFiltrados.map((v) => [
+      v.nombre,
+      v.apellido,
+      v.cedula,
       v.email,
       v.telefono,
-      v.cedula,
+      v.direccion,
+      v.fecha_nacimiento
+        ? new Date(v.fecha_nacimiento).toLocaleDateString()
+        : "",
       v.profesion,
-      v.programaNombre || "N/A",
+      v.disponibilidad,
+      v.programa,
       v.estado,
       new Date(v.fecha_creacion).toLocaleDateString(),
     ]);
 
     const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.join(",")),
+      headers.join(";"),
+      ...rows.map((row) => row.map(escapeCsvField).join(";")),
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
+    // Agregamos el BOM (\uFEFF) para que Excel reconozca correctamente los caracteres UTF-8 (tildes, ñ, etc.)
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `voluntarios_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -280,7 +335,7 @@ export default function VoluntariosAdmin() {
           </div>
 
           {/* Estadísticas */}
-          <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -330,7 +385,7 @@ export default function VoluntariosAdmin() {
           {/* Filtros y acciones */}
           <Card className="mb-6">
             <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col lg:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -353,7 +408,7 @@ export default function VoluntariosAdmin() {
                   </SelectContent>
                 </Select>
                 <Button onClick={exportarCSV} variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Exportar CSV
                 </Button>
                 <Dialog
@@ -384,37 +439,43 @@ export default function VoluntariosAdmin() {
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="nombres">Nombres *</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                        <div className="col-span-1 md:col-span-2">
+                          <h4 className="text-sm font-medium text-muted-foreground mb-2 border-b pb-1">
+                            Información Personal
+                          </h4>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="nombre">Nombres *</Label>
                           <Input
-                            id="nombres"
-                            value={formData.nombres}
+                            id="nombre"
+                            value={formData.nombre}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                nombres: e.target.value,
+                                nombre: e.target.value,
                               })
                             }
                             required
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="apellidos">Apellidos *</Label>
+                        <div className="space-y-2">
+                          <Label htmlFor="apellido">Apellidos *</Label>
                           <Input
-                            id="apellidos"
-                            value={formData.apellidos}
+                            id="apellido"
+                            value={formData.apellido}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                apellidos: e.target.value,
+                                apellido: e.target.value,
                               })
                             }
                             required
                           />
                         </div>
 
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="cedula">Cédula *</Label>
                           <Input
                             id="cedula"
@@ -426,9 +487,17 @@ export default function VoluntariosAdmin() {
                               })
                             }
                             required
+                            disabled={!!editingId}
                           />
                         </div>
-                        <div>
+
+                        <div className="col-span-1 md:col-span-2 mt-2">
+                          <h4 className="text-sm font-medium text-muted-foreground mb-2 border-b pb-1">
+                            Contacto y Dirección
+                          </h4>
+                        </div>
+
+                        <div className="space-y-2">
                           <Label htmlFor="email">Email *</Label>
                           <Input
                             id="email"
@@ -443,7 +512,7 @@ export default function VoluntariosAdmin() {
                             required
                           />
                         </div>
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="telefono">Teléfono *</Label>
                           <Input
                             id="telefono"
@@ -457,18 +526,18 @@ export default function VoluntariosAdmin() {
                             required
                           />
                         </div>
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="fecha_nacimiento">
                             Fecha de Nacimiento *
                           </Label>
                           <Input
                             id="fecha_nacimiento"
                             type="date"
-                            value={formData.fechaNacimiento}
+                            value={formData.fecha_nacimiento}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                fechaNacimiento: e.target.value,
+                                fecha_nacimiento: e.target.value,
                               })
                             }
                             required
@@ -497,21 +566,7 @@ export default function VoluntariosAdmin() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="col-span-2">
-                          <Label htmlFor="direccion">Dirección *</Label>
-                          <Input
-                            id="direccion"
-                            value={formData.direccion}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                direccion: e.target.value,
-                              })
-                            }
-                            required
-                          />
-                        </div>
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="disponibilidad">Disponibilidad</Label>
                           <Select
                             value={formData.disponibilidad}
@@ -539,12 +594,15 @@ export default function VoluntariosAdmin() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="programa">Programa Asignado</Label>
                           <Select
-                            value={formData.programaId}
+                            value={formData.programa}
                             onValueChange={(value) =>
-                              setFormData({ ...formData, programaId: value })
+                              setFormData({
+                                ...formData,
+                                programa: value,
+                              })
                             }
                           >
                             <SelectTrigger>
@@ -554,7 +612,7 @@ export default function VoluntariosAdmin() {
                               {programas.map((programa: any) => (
                                 <SelectItem
                                   key={programa.id}
-                                  value={String(programa.id)}
+                                  value={programa.nombre}
                                 >
                                   {programa.nombre}
                                 </SelectItem>
@@ -562,7 +620,7 @@ export default function VoluntariosAdmin() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="estado">Estado</Label>
                           <Select
                             value={formData.estado}
@@ -580,7 +638,7 @@ export default function VoluntariosAdmin() {
                           </Select>
                         </div>
                       </div>
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 pt-4 border-t">
                         <Button
                           type="button"
                           variant="outline"
@@ -619,7 +677,8 @@ export default function VoluntariosAdmin() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nombre</TableHead>
+                    <TableHead>Nombres</TableHead>
+                    <TableHead>Apellidos</TableHead>
                     <TableHead>Cédula</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Teléfono</TableHead>
@@ -634,8 +693,9 @@ export default function VoluntariosAdmin() {
                   {voluntariosFiltrados.map((voluntario) => (
                     <TableRow key={voluntario.id}>
                       <TableCell className="font-medium">
-                        {`${voluntario.nombre} ${voluntario.apellido}`}
+                        {voluntario.nombre}
                       </TableCell>
+                      <TableCell>{voluntario.apellido}</TableCell>
                       <TableCell>{voluntario.cedula}</TableCell>
                       <TableCell>{voluntario.email}</TableCell>
                       <TableCell>{voluntario.telefono}</TableCell>
@@ -643,10 +703,8 @@ export default function VoluntariosAdmin() {
                       <TableCell className="text-sm">
                         {voluntario.disponibilidad}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {voluntario.programaNombre || "No asignado"}
-                        </Badge>
+                      <TableCell className="text-sm">
+                        {voluntario.programa}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -665,6 +723,7 @@ export default function VoluntariosAdmin() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleEdit(voluntario)}
+                            className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border-yellow-200"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -672,6 +731,7 @@ export default function VoluntariosAdmin() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleDelete(voluntario.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

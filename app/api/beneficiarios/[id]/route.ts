@@ -2,11 +2,15 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  _: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
+    const { id } = await params;
     const [rows]: any = await pool.query(
       `SELECT * FROM beneficiarios WHERE id = ?`,
-      [params.id]
+      [id],
     );
 
     if (!rows.length) {
@@ -17,7 +21,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
     const [archivos]: any = await pool.query(
       `SELECT id, nombre, archivo, tipo, fecha_subida FROM archivos WHERE beneficiario_id = ? ORDER BY fecha_subida DESC`,
-      [params.id]
+      [id],
     );
 
     const beneficiario = {
@@ -51,9 +55,10 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
 
     const calcularEdad = (fecha: string) => {
@@ -85,8 +90,8 @@ export async function PUT(
         body.telefonoAcudiente,
         body.emailAcudiente || null,
         body.estado || "Activo",
-        params.id,
-      ]
+        id,
+      ],
     );
 
     return NextResponse.json({ success: true });
@@ -97,16 +102,15 @@ export async function PUT(
 
 export async function DELETE(
   _: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const client = await pool.getConnection();
   try {
+    const { id } = await params;
     await client.beginTransaction();
 
-    await client.query(`DELETE FROM archivos WHERE beneficiario_id = ?`, [
-      params.id,
-    ]);
-    await client.query(`DELETE FROM beneficiarios WHERE id = ?`, [params.id]);
+    await client.query(`DELETE FROM archivos WHERE beneficiario_id = ?`, [id]);
+    await client.query(`DELETE FROM beneficiarios WHERE id = ?`, [id]);
 
     await client.commit();
     return NextResponse.json({ success: true });

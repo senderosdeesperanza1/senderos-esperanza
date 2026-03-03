@@ -202,7 +202,7 @@ export default function BeneficiariosAdmin() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(archivoData),
-            }
+            },
           );
 
           const responseData = await response.json();
@@ -215,10 +215,10 @@ export default function BeneficiariosAdmin() {
 
             // Actualizar beneficiario seleccionado
             const updatedBeneficiarios = await fetch("/api/beneficiarios").then(
-              (r) => r.json()
+              (r) => r.json(),
             );
             const updatedBeneficiario = updatedBeneficiarios.find(
-              (b: any) => b.id === selectedBeneficiario.id
+              (b: any) => b.id === selectedBeneficiario.id,
             );
             setSelectedBeneficiario(updatedBeneficiario);
 
@@ -233,7 +233,7 @@ export default function BeneficiariosAdmin() {
             alert(
               `Error al subir archivo: ${
                 responseData.error || "Error desconocido"
-              }`
+              }`,
             );
             setUploadingFile(false);
           }
@@ -268,16 +268,16 @@ export default function BeneficiariosAdmin() {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ archivoId }),
-        }
+        },
       );
 
       if (response.ok) {
         await mutate();
         const updatedBeneficiarios = await fetch("/api/beneficiarios").then(
-          (r) => r.json()
+          (r) => r.json(),
         );
         const updatedBeneficiario = updatedBeneficiarios.find(
-          (b: any) => b.id === selectedBeneficiario.id
+          (b: any) => b.id === selectedBeneficiario.id,
         );
         setSelectedBeneficiario(updatedBeneficiario);
       }
@@ -326,7 +326,7 @@ export default function BeneficiariosAdmin() {
     ? beneficiarios.filter((b: any) =>
         `${b.nombres || ""} ${b.apellidos || ""} ${b.nombreAcudiente || ""}`
           .toLowerCase()
-          .includes(searchTerm.toLowerCase())
+          .includes(searchTerm.toLowerCase()),
       )
     : [];
 

@@ -33,13 +33,21 @@ export default function AdminDashboard() {
             fetch("/api/noticias"),
           ]);
 
-        const donaciones = await donacionesRes.json();
-        const voluntarios = await voluntariosRes.json();
-        const programas = await programasRes.json();
-        const noticias = await noticiasRes.json();
+        // Verificamos si la respuesta es exitosa antes de convertir a JSON
+        // Si falla, usamos un array vacío para no romper el dashboard
+        const donaciones = donacionesRes.ok ? await donacionesRes.json() : [];
+        const voluntarios = voluntariosRes.ok
+          ? await voluntariosRes.json()
+          : [];
+        const programas = programasRes.ok ? await programasRes.json() : [];
+        const noticias = noticiasRes.ok ? await noticiasRes.json() : [];
 
         const now = new Date();
-        const thisMonth = donaciones.filter((d: any) => {
+
+        // Aseguramos que donaciones sea un array antes de filtrar
+        const donacionesArray = Array.isArray(donaciones) ? donaciones : [];
+
+        const thisMonth = donacionesArray.filter((d: any) => {
           const donationDate = new Date(d.fecha);
           return (
             donationDate.getMonth() === now.getMonth() &&
@@ -48,24 +56,27 @@ export default function AdminDashboard() {
         });
 
         setMetrics({
-          totalDonaciones: donaciones.reduce(
-            (sum: number, d: any) => sum + d.monto,
-            0
+          totalDonaciones: donacionesArray.reduce(
+            (sum: number, d: any) => sum + Number(d.monto || 0),
+            0,
           ),
           donacionesMes: thisMonth.reduce(
-            (sum: number, d: any) => sum + d.monto,
-            0
+            (sum: number, d: any) => sum + Number(d.monto || 0),
+            0,
           ),
-          totalVoluntarios: voluntarios.length,
-          voluntariosActivos: voluntarios.filter(
-            (v: any) => v.estado === "activo"
-          ).length,
-          totalProgramas: programas.length,
-          programasActivos: programas.filter((p: any) => p.activo).length,
-          totalNoticias: noticias.length,
+          totalVoluntarios: Array.isArray(voluntarios) ? voluntarios.length : 0,
+          voluntariosActivos: Array.isArray(voluntarios)
+            ? voluntarios.filter((v: any) => v.estado === "activo").length
+            : 0,
+          totalProgramas: Array.isArray(programas) ? programas.length : 0,
+          programasActivos: Array.isArray(programas)
+            ? programas.filter((p: any) => p.activo || p.estado === "activo")
+                .length
+            : 0,
+          totalNoticias: Array.isArray(noticias) ? noticias.length : 0,
         });
       } catch (error) {
-        console.log("[v0] Error loading metrics:", error);
+        console.log("[Dashboard] Error loading metrics:", error);
       }
     };
 
@@ -255,3 +266,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

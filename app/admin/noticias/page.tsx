@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, ArrowLeft, LogOut } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
 import useSWR, { mutate } from "swr";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -334,7 +334,7 @@ function AdminNoticiasContent() {
                   />
                   <div
                     className={`absolute top-4 left-4 ${getCategoryColor(
-                      noticia.categoria
+                      noticia.categoria,
                     )} text-white px-3 py-1 rounded-full text-sm font-semibold`}
                   >
                     {getCategoryLabel(noticia.categoria)}
@@ -355,17 +355,17 @@ function AdminNoticiasContent() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleEdit(noticia)}
+                      className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border-yellow-200"
                     >
-                      <Pencil className="w-4 h-4 mr-1" />
-                      Editar
+                      <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
-                      variant="destructive"
+                      variant="outline"
                       onClick={() => handleDelete(noticia.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                     >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Eliminar
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>
