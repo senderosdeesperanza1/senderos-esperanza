@@ -18,7 +18,6 @@ export default function AdminDashboard() {
     totalVoluntarios: 0,
     voluntariosActivos: 0,
     totalProgramas: 0,
-    programasActivos: 0,
     totalNoticias: 0,
   });
 
@@ -69,10 +68,6 @@ export default function AdminDashboard() {
             ? voluntarios.filter((v: any) => v.estado === "activo").length
             : 0,
           totalProgramas: Array.isArray(programas) ? programas.length : 0,
-          programasActivos: Array.isArray(programas)
-            ? programas.filter((p: any) => p.activo || p.estado === "activo")
-                .length
-            : 0,
           totalNoticias: Array.isArray(noticias) ? noticias.length : 0,
         });
       } catch (error) {
@@ -133,9 +128,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.totalProgramas}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {metrics.programasActivos} activos
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Programas registrados</p>
           </CardContent>
         </Card>
 
@@ -266,4 +259,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
