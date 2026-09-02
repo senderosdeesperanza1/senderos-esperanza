@@ -19,17 +19,25 @@ export default function AdminDashboard() {
     voluntariosActivos: 0,
     totalProgramas: 0,
     totalNoticias: 0,
+    totalUsuarios: 0,
   });
 
   useEffect(() => {
     const loadMetrics = async () => {
       try {
-        const [donacionesRes, voluntariosRes, programasRes, noticiasRes] =
+        const [
+          donacionesRes,
+          voluntariosRes,
+          programasRes,
+          noticiasRes,
+          usuariosRes,
+        ] =
           await Promise.all([
             fetch("/api/donaciones"),
             fetch("/api/voluntarios"),
             fetch("/api/programas"),
             fetch("/api/noticias"),
+            fetch("/api/usuarios"),
           ]);
 
         // Verificamos si la respuesta es exitosa antes de convertir a JSON
@@ -40,6 +48,7 @@ export default function AdminDashboard() {
           : [];
         const programas = programasRes.ok ? await programasRes.json() : [];
         const noticias = noticiasRes.ok ? await noticiasRes.json() : [];
+        const usuarios = usuariosRes.ok ? await usuariosRes.json() : [];
 
         const now = new Date();
 
@@ -69,6 +78,7 @@ export default function AdminDashboard() {
             : 0,
           totalProgramas: Array.isArray(programas) ? programas.length : 0,
           totalNoticias: Array.isArray(noticias) ? noticias.length : 0,
+          totalUsuarios: Array.isArray(usuarios) ? usuarios.length : 0,
         });
       } catch (error) {
         console.log("[Dashboard] Error loading metrics:", error);
@@ -90,7 +100,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Métricas principales */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -142,6 +152,17 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{metrics.totalNoticias}</div>
             <p className="text-xs text-gray-500 mt-1">Publicaciones totales</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
+            <Users className="h-4 w-4 text-[#2e7d32]" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.totalUsuarios}</div>
+            <p className="text-xs text-gray-500 mt-1">Usuarios registrados</p>
           </CardContent>
         </Card>
       </div>
