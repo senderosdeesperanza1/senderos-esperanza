@@ -1,136 +1,90 @@
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import {
+  firestoreDocumentToVoluntario,
+  firestoreRequest,
+  voluntarioToFirestoreFields,
+} from "@/lib/firestore-rest";
 
-// =============================
-// GET voluntario por ID
-// =============================
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: idParam } = await params;
-    const id = Number(idParam);
-
-    const [rows]: any = await pool.execute(
-      "SELECT * FROM voluntarios WHERE id = ? LIMIT 1",
-      [id],
-    );
-
-    if (rows.length === 0) {
-      return NextResponse.json(
-        { error: "Voluntario no encontrado" },
-        { status: 404 },
-      );
-    }
-
-    return NextResponse.json(rows[0]);
+    const { id } = await params;
+    const document = await firestoreRequest(`voluntarios/${encodeURIComponent(id)}`);
+    return NextResponse.json(firestoreDocumentToVoluntario(document), { status: 200 });
   } catch (error: any) {
+    const status = error?.status || 500;
     return NextResponse.json(
-      { error: "Error obteniendo voluntario", details: error.message },
-      { status: 500 },
+      { error: "Voluntario no encontrado", details: error.message },
+      { status },
     );
   }
 }
 
-// =============================
-// PUT actualizar voluntario
-// =============================
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: idParam } = await params;
-    const id = Number(idParam);
+    const { id } = await params;
     const body = await request.json();
+    const currentDocument = await firestoreRequest(`voluntarios/${encodeURIComponent(id)}`);
+    const currentUser = firestoreDocumentToVoluntario(currentDocument);
 
-    const [exists]: any = await pool.execute(
-      "SELECT id FROM voluntarios WHERE id = ?",
-      [id],
+    const updateData = {
+      nombre: body.nombre ?? currentUser.nombre,
+      apellido: body.apellido ?? currentUser.apellido,
+      email: body.email ?? currentUser.email,
+      telefono: body.telefono ?? currentUser.telefono,
+      cedula: body.cedula ?? currentUser.cedula,
+      direccion: body.direccion ?? currentUser.direccion,
+      fecha_nacimiento: body.fecha_nacimiento ?? currentUser.fecha_nacimiento,
+      profesion: body.profesion ?? currentUser.profesion,
+      disponibilidad: body.disponibilidad ?? currentUser.disponibilidad,
+      programa: body.programa ?? currentUser.programa,
+      estado: body.estado ?? currentUser.estado,
+      fecha_creacion: currentUser.fecha_creacion,
+    };
+
+    const updatedDocument = await firestoreRequest(
+      `voluntarios/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          fields: voluntarioToFirestoreFields(updateData),
+        }),
+      },
     );
 
-    if (exists.length === 0) {
-      return NextResponse.json(
-        { error: "Voluntario no encontrado" },
-        { status: 404 },
-      );
-    }
-
-    await pool.execute(
-      `UPDATE voluntarios SET
-       nombre = ?, apellido = ?, email = ?, telefono = ?,
-       fecha_nacimiento = ?, profesion = ?, direccion = ?,
-       disponibilidad = ?, programa = ?, estado = ?
-       WHERE id = ?`,
-      [
-        body.nombre || body.nombres,
-        body.apellido || body.apellidos,
-        body.email,
-        body.telefono,
-        body.fecha_nacimiento || body.fechaNacimiento || null,
-        body.profesion,
-        body.direccion,
-        body.disponibilidad,
-        body.programa,
-        body.estado,
-        id,
-      ],
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: "Voluntario actualizado correctamente",
-    });
+    return NextResponse.json(firestoreDocumentToVoluntario(updatedDocument), { status: 200 });
   } catch (error: any) {
-    // Fallback por si la validación de arriba falla (ej. race condition)
-    // y la base de datos rechaza por una constraint UNIQUE.
-    if (error.code === "ER_DUP_ENTRY") {
-      return NextResponse.json(
-        { error: "Ya existe un voluntario con esta cédula o email." },
-        { status: 409 },
-      );
-    }
+    const status = error?.status || 500;
     return NextResponse.json(
       { error: "Error al actualizar voluntario", details: error.message },
-      { status: 500 },
+      { status },
     );
   }
 }
 
-// =============================
-// DELETE eliminar voluntario
-// =============================
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: idParam } = await params;
-    const id = Number(idParam);
+    const { id } = await params;
+    await firestoreRequest(`voluntarios/${encodeURIComponent(id)}`);
+    await firestoreRequest(`voluntarios/${encodeURIComponent(id)}`, { method: "DELETE" });
 
-    const [exists]: any = await pool.execute(
-      "SELECT id FROM voluntarios WHERE id = ?",
-      [id],
+    return NextResponse.json(
+      { success: true, message: "Voluntario eliminado exitosamente" },
+      { status: 200 },
     );
-
-    if (exists.length === 0) {
-      return NextResponse.json(
-        { error: "Voluntario no encontrado" },
-        { status: 404 },
-      );
-    }
-
-    await pool.execute("DELETE FROM voluntarios WHERE id = ?", [id]);
-
-    return NextResponse.json({
-      success: true,
-      message: "Voluntario eliminado correctamente",
-    });
   } catch (error: any) {
+    const status = error?.status || 500;
     return NextResponse.json(
       { error: "Error al eliminar voluntario", details: error.message },
-      { status: 500 },
+      { status },
     );
   }
 }

@@ -43,7 +43,7 @@ export function Header() {
             aria-label="Ir al inicio"
           >
             <Image
-              src="/logo.png"
+              src="/logo senderos.png"
               alt="Logo Senderos de Esperanza"
               width={48}
               height={48}
@@ -72,6 +72,8 @@ export function Header() {
                 Donar Ahora
               </Button>
             </Link>
+
+            {/* Botón de autenticación */}
             <Link href="/login">
               <Button
                 variant="outline"
@@ -113,6 +115,8 @@ export function Header() {
                   Donar Ahora
                 </Button>
               </Link>
+
+              {/* Botón de autenticación móvil */}
               <Link href="/login" onClick={() => setIsMenuOpen(false)}>
                 <Button
                   variant="outline"

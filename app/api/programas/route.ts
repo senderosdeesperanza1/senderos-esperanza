@@ -1,78 +1,65 @@
-// /app/api/programas/route.ts
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { firestoreRequest, type FirestoreDocument } from "@/lib/firestore-rest";
 
-// ==============================
-// GET → Listar programas
-// ==============================
+const fallbackProgramas = [
+  { id: "educacion", nombre: "Educación" },
+  { id: "salud", nombre: "Salud" },
+  { id: "bienestar", nombre: "Bienestar" },
+  { id: "alimentos", nombre: "Alimentos" },
+  { id: "otro", nombre: "Otro" },
+];
+
+function documentToPrograma(document: FirestoreDocument) {
+  const fields = document.fields || {};
+  return {
+    id: document.name.split("/").pop() || "",
+    nombre: fields.nombre?.stringValue || fields.titulo?.stringValue || "",
+  };
+}
+
 export async function GET() {
   try {
-    const [rows]: any = await pool.execute("SELECT * FROM programas");
+    const data = (await firestoreRequest("programas")) as {
+      documents?: FirestoreDocument[];
+    };
 
-    // Convertir estado → activo (boolean)
-    const programas = rows.map((p: any) => ({
-      ...p,
-      activo: p.estado === "activo",
-    }));
+    const programas = Array.isArray(data?.documents)
+      ? data.documents.map(documentToPrograma)
+      : fallbackProgramas;
 
-    return NextResponse.json(programas);
+    return NextResponse.json(programas.length ? programas : fallbackProgramas, {
+      status: 200,
+    });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: "Error cargando programas", details: error.message },
-      { status: 500 }
-    );
+    console.error("Error al cargar programas desde Firebase:", error?.message || error);
+    return NextResponse.json(fallbackProgramas, { status: 200 });
   }
 }
 
-// ==============================
-// POST → Crear programa
-// ==============================
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-
-    const {
-      nombre,
-      descripcion,
-      objetivos,
-      beneficiarios,
-      presupuesto,
-      responsable,
-      activo,
-    } = body;
+    const nombre = String(body?.nombre || "").trim();
 
     if (!nombre) {
-      return NextResponse.json(
-        { error: "El nombre es obligatorio" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "El nombre del programa es obligatorio" }, { status: 400 });
     }
 
-    const estado = activo ? "activo" : "inactivo";
+    const document = await firestoreRequest("programas", {
+      method: "POST",
+      body: JSON.stringify({
+        fields: {
+          nombre: { stringValue: nombre },
+        },
+      }),
+    });
 
-    const [result]: any = await pool.execute(
-      `INSERT INTO programas 
-      (nombre, descripcion, objetivos, beneficiarios, presupuesto, responsable, estado, fecha_inicio)
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())`,
-      [
-        nombre,
-        descripcion,
-        objetivos,
-        beneficiarios ?? 0,
-        presupuesto ?? 0,
-        responsable ?? null,
-        estado,
-      ]
-    );
-
-    return NextResponse.json(
-      { success: true, id: result.insertId },
-      { status: 201 }
-    );
+    return NextResponse.json(documentToPrograma(document as FirestoreDocument), { status: 201 });
   } catch (error: any) {
+    console.error("Error al crear programa:", error?.message || error);
     return NextResponse.json(
-      { error: "Error al crear programa", details: error.message },
-      { status: 500 }
+      { error: "Error al crear programa", details: error?.message || "Desconocido" },
+      { status: 500 },
     );
   }
 }

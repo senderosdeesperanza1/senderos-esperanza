@@ -125,28 +125,28 @@ export function Footer() {
             <h4 className="font-bold mb-4">Síguenos</h4>
             <div className="flex gap-4">
               <a
-                href="https://www.facebook.com/groups/893324483443116/?ref=share&mibextid=NSMWBT"
+                href="https://www.facebook.com/share/17wnjUSYcS/" target="_blank"
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#f4c542] flex items-center justify-center transition-colors"
                 aria-label="Facebook"
               >
                 <Facebook size={20} />
               </a>
               <a
-                href="https://www.instagram.com/corporacionsenderosdeesperanza/"
+                href="https://www.instagram.com/corporacionsenderosdeesperanza/" target="_blank"
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#f4c542] flex items-center justify-center transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram size={20} />
               </a>
               <a
-                href="https://www.tiktok.com/@corporacion.senderos?_r=1&_t=ZS-93hTFSNFvUq"
+                href="https://www.tiktok.com/@corporacion.senderos?_r=1&_t=ZS-93hTFSNFvUq" target="_blank"
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#f4c542] flex items-center justify-center transition-colors"
                 aria-label="TikTok"
               >
                 <Music size={20} />
               </a>
               <a
-                href="https://www.youtube.com/@SenderosdeEsperanza-v1m"
+                href="https://www.youtube.com/@SenderosdeEsperanza-v1m" target="_blank"
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#f4c542] flex items-center justify-center transition-colors"
                 aria-label="YouTube"
               >

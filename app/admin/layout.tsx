@@ -16,6 +16,7 @@ import {
   LogOut,
   FolderOpen,
   User,
+  Image as ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -36,9 +37,9 @@ export default function AdminLayout({
     { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/donaciones", icon: DollarSign, label: "Donaciones" },
     { href: "/admin/voluntarios", icon: Users, label: "Voluntarios" },
-    { href: "/admin/programas", icon: Activity, label: "Programas" },
     { href: "/admin/beneficiarios", icon: FolderOpen, label: "Beneficiarios" },
     { href: "/admin/noticias", icon: FileText, label: "Noticias" },
+    { href: "/admin/galeria", icon: ImageIcon, label: "Galería" },
     { href: "/admin/usuarios", icon: UserCog, label: "Usuarios" },
   ];
 
@@ -125,7 +126,7 @@ export default function AdminLayout({
             >
               <div className="relative h-10 w-10 transition-transform group-hover:scale-105">
                 <Image
-                  src="/logo.png"
+                  src="/logo senderos.png"
                   alt="Logo"
                   fill
                   className="object-contain"

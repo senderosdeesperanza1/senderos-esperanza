@@ -81,10 +81,16 @@ export default function UsuariosAdmin() {
   const cargarUsuarios = async () => {
     try {
       const response = await fetch("/api/usuarios");
-      const data = await response.json();
-      setUsuarios(data);
+      const data = await response.json().catch(() => []);
+      const lista = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.documents)
+          ? data.documents
+          : [];
+      setUsuarios(lista);
     } catch (error) {
       console.log("[v0] Error loading users:", error);
+      setUsuarios([]);
     }
   };
 

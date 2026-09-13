@@ -1,35 +1,28 @@
-// /app/api/voluntarios/route.ts
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import {
+  firestoreDocumentToVoluntario,
+  firestoreRequest,
+  type FirestoreDocument,
+  voluntarioToFirestoreFields,
+} from "@/lib/firestore-rest";
 
-// ========================================
-// GET → Obtener todos los voluntarios
-// ========================================
 export async function GET() {
   try {
-    // Solución Profesional: Usar pool.query y LEFT JOIN para obtener el nombre del programa.
-    const [rows]: any = await pool.query(`
-      SELECT 
-        v.*, 
-        p.nombre AS programaNombre 
-      FROM 
-        voluntarios v
-      LEFT JOIN 
-        programas p ON v.programa = p.id
-      ORDER BY v.id DESC`);
+    const data = (await firestoreRequest("voluntarios?orderBy=fecha_creacion%20desc")) as {
+      documents?: FirestoreDocument[];
+    };
 
-    return NextResponse.json(rows);
+    const voluntarios = Array.isArray(data?.documents)
+      ? data.documents.map((doc) => firestoreDocumentToVoluntario(doc))
+      : [];
+
+    return NextResponse.json(voluntarios, { status: 200 });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: "Error al obtener voluntarios", details: error.message },
-      { status: 500 },
-    );
+    console.error("❌ Error al obtener voluntarios desde Firebase:", error.message);
+    return NextResponse.json([], { status: 200 });
   }
 }
 
-// ========================================
-// POST → Crear nuevo voluntario
-// ========================================
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -47,7 +40,6 @@ export async function POST(request: Request) {
       estado,
     } = body;
 
-    // Validación mínima
     if (!nombre || !apellido || !cedula || !email) {
       return NextResponse.json(
         { error: "Nombres, apellidos, cédula y email son obligatorios" },
@@ -55,59 +47,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // Solución Profesional: Validar longitud de la cédula
-    if (cedula.length < 7 || cedula.length > 10) {
-      return NextResponse.json(
-        { error: "La cédula debe tener entre 7 y 10 dígitos." },
-        { status: 400 },
-      );
-    }
+    const fechaCreacion = new Date().toISOString();
+    const document = (await firestoreRequest("voluntarios", {
+      method: "POST",
+      body: JSON.stringify({
+        fields: voluntarioToFirestoreFields({
+          nombre: String(nombre).trim(),
+          apellido: String(apellido).trim(),
+          cedula: String(cedula).trim(),
+          email: String(email).trim(),
+          telefono: telefono ? String(telefono).trim() : "",
+          fecha_nacimiento: fecha_nacimiento ? String(fecha_nacimiento) : "",
+          profesion: profesion ? String(profesion).trim() : "",
+          direccion: direccion ? String(direccion).trim() : "",
+          disponibilidad: disponibilidad ? String(disponibilidad).trim() : "",
+          programa: programa ? String(programa) : "",
+          estado: estado || "activo",
+          fecha_creacion: fechaCreacion,
+        }),
+      }),
+    })) as FirestoreDocument;
 
-    // Solución Profesional: Validar que la cédula sea única antes de insertar
-    const [existing]: any = await pool.execute(
-      "SELECT id FROM voluntarios WHERE cedula = ?",
-      [cedula],
-    );
-
-    if (existing.length > 0) {
-      return NextResponse.json(
-        { error: "Ya existe un voluntario registrado con esta cédula." },
-        { status: 409 }, // 409 Conflict
-      );
-    }
-
-    const [result]: any = await pool.execute(
-      `INSERT INTO voluntarios 
-      (nombre, apellido, cedula, email, telefono, fecha_nacimiento, profesion, direccion, disponibilidad, programa, estado)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        nombre,
-        apellido,
-        cedula,
-        email,
-        telefono,
-        fecha_nacimiento,
-        profesion,
-        direccion,
-        disponibilidad,
-        programa,
-        estado || "activo",
-      ],
-    );
-
-    return NextResponse.json(
-      { success: true, id: result.insertId },
-      { status: 201 },
-    );
+    return NextResponse.json(firestoreDocumentToVoluntario(document), { status: 201 });
   } catch (error: any) {
-    // Fallback por si la validación de arriba falla (ej. race condition)
-    // y la base de datos rechaza por una constraint UNIQUE.
-    if (error.code === "ER_DUP_ENTRY") {
-      return NextResponse.json(
-        { error: "Ya existe un voluntario con esta cédula o email." },
-        { status: 409 },
-      );
-    }
+    console.error("❌ Error al crear voluntario:", error.message);
     return NextResponse.json(
       { error: "Error al crear voluntario", details: error.message },
       { status: 500 },

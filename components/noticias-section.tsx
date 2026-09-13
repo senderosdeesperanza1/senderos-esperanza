@@ -15,7 +15,19 @@ import {
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error([data?.error, data?.details].filter(Boolean).join(": ") || "No fue posible cargar las noticias");
+  }
+  if (!Array.isArray(data)) {
+    throw new Error("La respuesta de noticias no tiene un formato válido");
+  }
+
+  return data;
+};
 
 export function NoticiasSection() {
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
@@ -67,7 +79,8 @@ export function NoticiasSection() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const [year, month, day] = dateString.slice(0, 10).split("-").map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString("es-ES", {
       day: "numeric",
       month: "long",

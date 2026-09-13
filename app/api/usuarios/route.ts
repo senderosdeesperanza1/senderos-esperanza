@@ -1,95 +1,90 @@
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import {
+  firestoreDocumentToUsuario,
+  firestoreRequest,
+  type FirestoreDocument,
+  usuarioToFirestoreFields,
+} from "@/lib/firestore-rest";
 
-// =====================================
-// GET — Obtener todos los usuarios (MySQL)
-// =====================================
 export async function GET() {
   try {
-    const [rows] = await pool.execute<any[]>(
-      "SELECT id, nombre, email, rol, estado, ultimo_acceso, fecha_creacion FROM usuarios"
-    );
+    const data = (await firestoreRequest("usuarios?orderBy=fechaCreacion%20desc")) as {
+      documents?: FirestoreDocument[];
+    };
 
-    // Transforma snake_case a camelCase para que coincida con el frontend
-    const usuarios = rows.map((row) => ({
-      id: row.id,
-      nombre: row.nombre,
-      email: row.email,
-      rol: row.rol,
-      estado: row.estado,
-      ultimoAcceso: row.ultimo_acceso,
-      fechaCreacion: row.fecha_creacion,
-    }));
+    const usuarios = Array.isArray(data?.documents)
+      ? data.documents.map((doc) => firestoreDocumentToUsuario(doc))
+      : [];
 
     return NextResponse.json(usuarios, { status: 200 });
   } catch (error: any) {
-    console.error("❌ Error al obtener usuarios:", error.message);
-    return NextResponse.json(
-      {
-        error: "Error al obtener usuarios",
-        details: error.message,
-      },
-      { status: 500 }
-    );
+    console.error("❌ Error al obtener usuarios desde Firebase:", error.message);
+    return NextResponse.json([], { status: 200 });
   }
 }
 
-// =====================================
-// POST — Crear usuario (MySQL)
-// =====================================
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { nombre, email, password, rol, estado } = body;
 
-    // VALIDACIONES
     if (!nombre || !email || !password) {
       return NextResponse.json(
         { error: "Nombre, email y contraseña son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Verificar si el email ya existe
-    const [existe]: any = await pool.execute(
-      "SELECT id FROM usuarios WHERE email = ? LIMIT 1",
-      [email]
-    );
-
-    if (existe.length > 0) {
+    const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    if (!firebaseApiKey) {
       return NextResponse.json(
-        { error: "El correo ya está registrado" },
-        { status: 400 }
+        { error: "Falta configurar NEXT_PUBLIC_FIREBASE_API_KEY" },
+        { status: 500 },
       );
     }
 
-    const fechaCreacion = new Date();
-
-    // Insertar usuario
-    const [result]: any = await pool.execute<any>(
-      `INSERT INTO usuarios (nombre, email, password, rol, estado, fecha_creacion) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        nombre,
-        email,
-        password,
-        rol || "coordinador",
-        estado || "activo",
-        fechaCreacion,
-      ]
+    const authResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: String(email).trim(),
+          password,
+          returnSecureToken: true,
+        }),
+        cache: "no-store",
+      },
     );
 
-    const nuevoUsuario = {
-      id: result.insertId,
-      nombre,
-      email,
-      rol: rol || "coordinador",
-      estado: estado || "activo",
-      fechaCreacion: fechaCreacion,
-      ultimoAcceso: null,
-    };
+    const authData = await authResponse.json();
 
-    return NextResponse.json(nuevoUsuario, { status: 201 });
+    if (!authResponse.ok) {
+      return NextResponse.json(
+        {
+          error: authData?.error?.message || "No se pudo crear la cuenta en Firebase",
+        },
+        { status: 400 },
+      );
+    }
+
+    const fechaCreacion = new Date().toISOString();
+    const document = (await firestoreRequest("usuarios", {
+      method: "POST",
+      body: JSON.stringify({
+        fields: usuarioToFirestoreFields({
+          uid: authData.localId,
+          nombre: String(nombre).trim(),
+          email: String(email).trim(),
+          rol: rol || "coordinador",
+          estado: estado || "activo",
+          ultimoAcceso: "",
+          fechaCreacion,
+        }),
+      }),
+    })) as FirestoreDocument;
+
+    return NextResponse.json(firestoreDocumentToUsuario(document), { status: 201 });
   } catch (error: any) {
     console.error("❌ Error al crear usuario:", error.message);
     return NextResponse.json(
@@ -97,7 +92,7 @@ export async function POST(request: Request) {
         error: "Error al crear usuario",
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -7,9 +7,30 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Users, FileText, Activity, Calendar } from "lucide-react";
+import { DollarSign, Users, FileText, Activity, Calendar, Image as ImageIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+type ActivityItem = {
+  id: string;
+  title: string;
+  detail: string;
+  date: string;
+  color: string;
+  href: string;
+};
+
+function relativeTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Fecha no disponible";
+
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return "Hace unos segundos";
+  if (seconds < 3600) return `Hace ${Math.floor(seconds / 60)} min`;
+  if (seconds < 86400) return `Hace ${Math.floor(seconds / 3600)} h`;
+  if (seconds < 2592000) return `Hace ${Math.floor(seconds / 86400)} días`;
+  return date.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+}
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState({
@@ -17,30 +38,83 @@ export default function AdminDashboard() {
     donacionesMes: 0,
     totalVoluntarios: 0,
     voluntariosActivos: 0,
-    totalProgramas: 0,
-    programasActivos: 0,
     totalNoticias: 0,
+    totalFotos: 0,
+    totalUsuarios: 0,
+    usuariosActivos: 0,
   });
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     const loadMetrics = async () => {
       try {
-        const [donacionesRes, voluntariosRes, programasRes, noticiasRes] =
+        const [donacionesRes, voluntariosRes, noticiasRes, galeriaRes, usuariosRes] =
           await Promise.all([
             fetch("/api/donaciones"),
             fetch("/api/voluntarios"),
-            fetch("/api/programas"),
             fetch("/api/noticias"),
+            fetch("/api/galeria"),
+            fetch("/api/usuarios"),
           ]);
 
         // Verificamos si la respuesta es exitosa antes de convertir a JSON
         // Si falla, usamos un array vacío para no romper el dashboard
         const donaciones = donacionesRes.ok ? await donacionesRes.json() : [];
-        const voluntarios = voluntariosRes.ok
-          ? await voluntariosRes.json()
-          : [];
-        const programas = programasRes.ok ? await programasRes.json() : [];
+        const voluntarios = voluntariosRes.ok  ? await voluntariosRes.json(): [];
         const noticias = noticiasRes.ok ? await noticiasRes.json() : [];
+        const galeria = galeriaRes.ok ? await galeriaRes.json() : [];
+        const usuarios = usuariosRes.ok ? await usuariosRes.json() : [];
+
+        const safeArray = (value: unknown) => (Array.isArray(value) ? value : []);
+        const activityItems: ActivityItem[] = [
+          ...safeArray(noticias).map((item: any) => ({
+            id: `noticia-${item.id || item.titulo}`,
+            title: "Noticia publicada",
+            detail: item.titulo || "Sin título",
+            date: item.fecha,
+            color: "bg-blue-500",
+            href: "/admin/noticias",
+          })),
+          ...safeArray(galeria).map((item: any) => ({
+            id: `galeria-${item.id || item.imagen}`,
+            title: "Nueva foto en la galería",
+            detail: "Imagen agregada a Firebase",
+            date: item.fecha,
+            color: "bg-amber-500",
+            href: "/admin/galeria",
+          })),
+          ...safeArray(usuarios).map((item: any) => ({
+            id: `usuario-${item.id || item.email}`,
+            title: "Nuevo usuario registrado",
+            detail: item.nombre || item.email || "Usuario",
+            date: item.fechaCreacion,
+            color: "bg-green-600",
+            href: "/admin/usuarios",
+          })),
+          ...safeArray(voluntarios).map((item: any) => ({
+            id: `voluntario-${item.id || item.email}`,
+            title: "Nuevo voluntario registrado",
+            detail: `${item.nombre || "Voluntario"} ${item.apellido || ""}`.trim(),
+            date: item.fecha_creacion,
+            color: "bg-emerald-500",
+            href: "/admin/voluntarios",
+          })),
+          ...safeArray(donaciones).map((item: any) => ({
+            id: `donacion-${item.id || item.email}`,
+            title: "Nueva donación recibida",
+            detail: `$${Number(item.monto || 0).toLocaleString("es-CO")}`,
+            date: item.fecha,
+            color: "bg-orange-500",
+            href: "/admin/donaciones",
+          })),
+        ]
+          .filter((item) => item.date)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 6);
+
+        setActivity(activityItems);
+        setLastUpdated(new Date());
 
         const now = new Date();
 
@@ -68,12 +142,12 @@ export default function AdminDashboard() {
           voluntariosActivos: Array.isArray(voluntarios)
             ? voluntarios.filter((v: any) => v.estado === "activo").length
             : 0,
-          totalProgramas: Array.isArray(programas) ? programas.length : 0,
-          programasActivos: Array.isArray(programas)
-            ? programas.filter((p: any) => p.activo || p.estado === "activo")
-                .length
-            : 0,
+          totalUsuarios: Array.isArray(usuarios) ? usuarios.length : 0,
+          usuariosActivos: Array.isArray(usuarios)
+            ? usuarios.filter((u: any) => u.estado === "activo").length
+            : 0,  
           totalNoticias: Array.isArray(noticias) ? noticias.length : 0,
+          totalFotos: Array.isArray(galeria) ? galeria.length : 0,
         });
       } catch (error) {
         console.log("[Dashboard] Error loading metrics:", error);
@@ -81,6 +155,8 @@ export default function AdminDashboard() {
     };
 
     loadMetrics();
+    const refreshId = window.setInterval(loadMetrics, 15000);
+    return () => window.clearInterval(refreshId);
   }, []);
 
   return (
@@ -95,7 +171,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Métricas principales */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -128,29 +204,42 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Programas</CardTitle>
-            <Activity className="h-4 w-4 text-[#2e7d32]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalProgramas}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {metrics.programasActivos} activos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Noticias Publicadas
+              Noticias
             </CardTitle>
             <FileText className="h-4 w-4 text-[#2e7d32]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.totalNoticias}</div>
-            <p className="text-xs text-gray-500 mt-1">Publicaciones totales</p>
+            <p className="text-xs text-gray-500 mt-1">Publicaciones</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Galería
+            </CardTitle>
+            <ImageIcon className="h-4 w-4 text-[#2e7d32]" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.totalFotos}</div>
+            <p className="text-xs text-gray-500 mt-1">Fotos en Firebase</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
+            <Users className="h-4 w-4 text-[#2e7d32]" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.totalUsuarios}</div>
+            <p className="text-xs text-gray-500 mt-1">
+              {metrics.usuariosActivos} activos
+            </p>
+          </CardContent>
+        </Card>
+
       </div>
 
       {/* Accesos rápidos */}
@@ -185,20 +274,6 @@ export default function AdminDashboard() {
             </Card>
           </Link>
 
-          <Link href="/admin/programas">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-[#2e7d32]" />
-                  Gestión de Programas
-                </CardTitle>
-                <CardDescription>
-                  Agregar, editar y eliminar proyectos sociales
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-
           <Link href="/admin/noticias">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
               <CardHeader>
@@ -213,11 +288,25 @@ export default function AdminDashboard() {
             </Card>
           </Link>
 
+          <Link href="/admin/galeria">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-l-4 border-l-[#2e7d32]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5 text-[#2e7d32]" />
+                  Gestión de Galería
+                </CardTitle>
+                <CardDescription>
+                  Subir, organizar y eliminar fotos con Firebase
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
           <Link href="/admin/usuarios">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-[#2e7d32]" />
+                  <UserIcon className="h-5 w-5 text-[#2e7d32]" />
                   Gestión de Usuarios
                 </CardTitle>
                 <CardDescription>
@@ -228,41 +317,6 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
-
-      {/* Actividad reciente */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-[#2e7d32]" />
-            Actividad Reciente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-              <div className="h-2 w-2 bg-[#2e7d32] rounded-full"></div>
-              <div className="flex-1">
-                <p className="font-medium">Nueva donación recibida</p>
-                <p className="text-sm text-gray-500">Hace 2 horas</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-              <div className="h-2 w-2 bg-[#f4c542] rounded-full"></div>
-              <div className="flex-1">
-                <p className="font-medium">Nuevo voluntario registrado</p>
-                <p className="text-sm text-gray-500">Hace 5 horas</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-              <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="font-medium">Noticia publicada</p>
-                <p className="text-sm text-gray-500">Hace 1 día</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -17,11 +17,15 @@ const slides = [
   },
   {
     image:
-      "https://res.cloudinary.com/dqyhxdeyg/image/upload/v1770240793/flyersenderos_ivej3w.png",
+      "https://res.cloudinary.com/dqyhxdeyg/image/upload/v1788216693/Carousel_2_xgwxig.jpg",
   },
   {
     image:
       "https://res.cloudinary.com/dqyhxdeyg/image/upload/v1759164956/Carousel_2_dudgsx.jpg",
+  },
+  {
+    image:
+      "https://res.cloudinary.com/dqyhxdeyg/image/upload/v1788216694/Carousel_4_apsbhq.jpg",
   },
 ];
 
@@ -60,28 +64,25 @@ export function HeroSlider() {
         {slides.map((slide, index) => (
           <div
             key={index}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentSlide ? "opacity-100" : "opacity-0"
-            }`}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? "opacity-100" : "opacity-0"
+              }`}
           >
             <Image
               src={slide.image}
               alt={slide.title || "Imagen de la comunidad"}
               fill
               priority={index === 0}
-              className={`object-cover transition-transform duration-7000 ease-in-out ${
-                index === currentSlide ? "scale-110" : "scale-100"
+              className={`object-cover transition-transform duration-7000 ease-in-out ${index === currentSlide ? "scale-110" : "scale-100"
               }`}
             />
             <div className="absolute inset-0 bg-linear-to-b from-black/70 via-black/30 to-black/80" />
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center text-white p-4">
               {slide.title && slide.description && (
                 <div
-                  className={`max-w-3xl transition-opacity duration-1000 ${
-                    index === currentSlide
-                      ? "opacity-100 animate-fade-in-up animate-duration-1000"
-                      : "opacity-0"
-                  }`}
+                  className={`max-w-3xl transition-opacity duration-1000 ${index === currentSlide
+                    ? "opacity-100 animate-fade-in-up animate-duration-1000"
+                    : "opacity-0"
+                    }`}
                 >
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 leading-tight drop-shadow-2xl">
                     {slide.title}
@@ -113,9 +114,8 @@ export function HeroSlider() {
             key={index}
             onClick={() => handleInteraction(() => setCurrentSlide(index))}
             aria-label={`Ir al slide ${index + 1}`}
-            className={`h-3 w-3 rounded-full ${
-              index === currentSlide ? "bg-white" : "bg-white/50"
-            }`}
+            className={`h-3 w-3 rounded-full ${index === currentSlide ? "bg-white" : "bg-white/50"
+              }`}
           />
         ))}
       </div>

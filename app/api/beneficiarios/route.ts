@@ -1,88 +1,60 @@
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import {
+  firestoreRequest,
+  type FirestoreDocument,
+} from "@/lib/firestore-rest";
 
-// Interfaz para mejorar el tipado y la autocompletación
-interface Archivo {
-  id: number;
-  nombre: string;
-  tipo: string;
-  fecha: string;
-  ruta?: string; // La ruta es opcional por si hay archivos antiguos sin ella
+function toFirestoreText(value: unknown) {
+  return typeof value === "string" ? value : value === undefined || value === null ? "" : String(value);
 }
 
-interface Beneficiario {
-  id: number;
-  nombres: string;
-  apellidos: string;
-  // ... otros campos que quieras tipar
-  archivos: Archivo[];
+function toFirestoreFields(record: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => [key, { stringValue: toFirestoreText(value) }]),
+  );
 }
 
-// ============================================================
-// GET → Listar todos los beneficiarios con sus archivos
-// ============================================================
+function documentToBeneficiario(document: FirestoreDocument) {
+  const fields = document.fields || {};
+  return {
+    id: document.name.split("/").pop() || "",
+    nombres: fields.nombres?.stringValue || "",
+    apellidos: fields.apellidos?.stringValue || "",
+    fechaNacimiento: fields.fechaNacimiento?.stringValue || fields.fecha_nacimiento?.stringValue || "",
+    edad: Number(fields.edad?.stringValue || 0),
+    cedula: fields.cedula?.stringValue || "",
+    genero: fields.genero?.stringValue || "",
+    direccion: fields.direccion?.stringValue || "",
+    barrio: fields.barrio?.stringValue || "",
+    nombreAcudiente: fields.nombreAcudiente?.stringValue || fields.nombre_acudiente?.stringValue || "",
+    telefonoAcudiente: fields.telefonoAcudiente?.stringValue || fields.telefono_acudiente?.stringValue || "",
+    emailAcudiente: fields.emailAcudiente?.stringValue || fields.email_acudiente?.stringValue || "",
+    estado: fields.estado?.stringValue || "activo",
+    fechaIngreso: fields.fechaIngreso?.stringValue || fields.fecha_ingreso?.stringValue || new Date().toISOString(),
+    archivos: [],
+  };
+}
+
 export async function GET() {
   try {
-    // Solución Compatible: Dos consultas separadas para evitar el uso de JSON_ARRAYAGG.
-    // 1. Obtener todos los beneficiarios.
-    const [beneficiariosRows]: any = await pool.query(`
-      SELECT * FROM beneficiarios ORDER BY id DESC
-    `);
+    const data = (await firestoreRequest("beneficiarios")) as {
+      documents?: FirestoreDocument[];
+    };
 
-    // 2. Obtener todos los archivos.
-    const [archivosRows]: any = await pool.query(`
-      SELECT id, beneficiario_id, nombre, tipo, fecha, ruta_archivo 
-      FROM archivos 
-      ORDER BY id DESC
-    `);
+    const beneficiarios = Array.isArray(data?.documents)
+      ? data.documents.map(documentToBeneficiario)
+      : [];
 
-    // 3. Combinar los datos en JavaScript.
-    const beneficiarios = beneficiariosRows.map((b: any) => {
-      // Renombramos las claves para que coincidan con lo que espera el frontend (camelCase)
-      return {
-        id: b.id,
-        nombres: b.nombres,
-        apellidos: b.apellidos,
-        fechaNacimiento: b.fecha_nacimiento,
-        edad: b.edad,
-        cedula: b.cedula,
-        genero: b.genero,
-        direccion: b.direccion,
-        barrio: b.barrio,
-        nombreAcudiente: b.nombre_acudiente,
-        telefonoAcudiente: b.telefono_acudiente,
-        emailAcudiente: b.email_acudiente,
-        estado: b.estado,
-        fechaIngreso: b.fecha_ingreso,
-        archivos: archivosRows
-          .filter((a: any) => a.beneficiario_id === b.id)
-          .map((a: any) => ({
-            id: a.id,
-            nombre: a.nombre,
-            tipo: a.tipo,
-            fecha: a.fecha,
-            ruta: a.ruta_archivo,
-          })),
-      };
-    });
-
-    return NextResponse.json(beneficiarios);
+    return NextResponse.json(beneficiarios, { status: 200 });
   } catch (error: any) {
     console.error("GET beneficiarios error:", error);
-    return NextResponse.json(
-      { error: "Error al cargar beneficiarios", details: error.message },
-      { status: 500 },
-    );
+    return NextResponse.json([], { status: 200 });
   }
 }
 
-// ============================================================
-// POST → Crear beneficiario
-// ============================================================
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-
     const {
       nombres,
       apellidos,
@@ -98,33 +70,28 @@ export async function POST(request: Request) {
       estado = "activo",
     } = body;
 
-    const sql = `
-      INSERT INTO beneficiarios 
-      (nombres, apellidos, fecha_nacimiento, edad, cedula, genero, direccion, barrio,
-       nombre_acudiente, telefono_acudiente, email_acudiente, estado)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const [result]: any = await pool.execute(sql, [
-      nombres,
-      apellidos,
-      fechaNacimiento,
-      edad,
-      cedula,
-      genero,
-      direccion,
-      barrio,
-      nombreAcudiente,
-      telefonoAcudiente,
-      emailAcudiente,
-      estado,
-    ]);
-
-    return NextResponse.json({
-      success: true,
-      id: result.insertId,
-      message: "Beneficiario creado correctamente",
+    const document = await firestoreRequest("beneficiarios", {
+      method: "POST",
+      body: JSON.stringify({
+        fields: toFirestoreFields({
+          nombres: String(nombres || "").trim(),
+          apellidos: String(apellidos || "").trim(),
+          fechaNacimiento: String(fechaNacimiento || ""),
+          edad: Number(edad || 0),
+          cedula: String(cedula || "").trim(),
+          genero: String(genero || ""),
+          direccion: String(direccion || ""),
+          barrio: String(barrio || ""),
+          nombreAcudiente: String(nombreAcudiente || "").trim(),
+          telefonoAcudiente: String(telefonoAcudiente || "").trim(),
+          emailAcudiente: String(emailAcudiente || "").trim(),
+          estado: String(estado || "activo"),
+          fechaIngreso: new Date().toISOString(),
+        }),
+      }),
     });
+
+    return NextResponse.json(documentToBeneficiario(document as FirestoreDocument), { status: 201 });
   } catch (error: any) {
     console.error("POST beneficiario error:", error);
     return NextResponse.json(

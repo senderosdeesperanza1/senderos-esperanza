@@ -1,6 +1,33 @@
 // app/api/beneficiarios/[id]/route.ts
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { firestoreRequest, type FirestoreDocument } from "@/lib/firestore-rest";
+
+function toFirestoreFields(record: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => [key, { stringValue: value === undefined || value === null ? "" : String(value) }]),
+  );
+}
+
+function documentToBeneficiario(document: FirestoreDocument) {
+  const fields = document.fields || {};
+  return {
+    id: document.name.split("/").pop() || "",
+    nombres: fields.nombres?.stringValue || "",
+    apellidos: fields.apellidos?.stringValue || "",
+    fechaNacimiento: fields.fechaNacimiento?.stringValue || fields.fecha_nacimiento?.stringValue || "",
+    edad: Number(fields.edad?.stringValue || 0),
+    cedula: fields.cedula?.stringValue || "",
+    genero: fields.genero?.stringValue || "",
+    direccion: fields.direccion?.stringValue || "",
+    barrio: fields.barrio?.stringValue || "",
+    nombreAcudiente: fields.nombreAcudiente?.stringValue || fields.nombre_acudiente?.stringValue || "",
+    telefonoAcudiente: fields.telefonoAcudiente?.stringValue || fields.telefono_acudiente?.stringValue || "",
+    emailAcudiente: fields.emailAcudiente?.stringValue || fields.email_acudiente?.stringValue || "",
+    estado: fields.estado?.stringValue || "activo",
+    fechaIngreso: fields.fechaIngreso?.stringValue || fields.fecha_ingreso?.stringValue || new Date().toISOString(),
+    archivos: [],
+  };
+}
 
 export async function GET(
   _: Request,
@@ -8,48 +35,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const [rows]: any = await pool.query(
-      `SELECT * FROM beneficiarios WHERE id = ?`,
-      [id],
-    );
-
-    if (!rows.length) {
-      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-    }
-
-    const b = rows[0];
-
-    const [archivos]: any = await pool.query(
-      `SELECT id, nombre, archivo, tipo, fecha_subida FROM archivos WHERE beneficiario_id = ? ORDER BY fecha_subida DESC`,
-      [id],
-    );
-
-    const beneficiario = {
-      id: b.id,
-      nombres: b.nombres,
-      apellidos: b.apellidos,
-      fechaNacimiento: b.fecha_nacimiento?.toISOString().split("T")[0] || "",
-      edad: b.edad,
-      cedula: b.cedula || "",
-      genero: b.genero,
-      direccion: b.direccion,
-      barrio: b.barrio || "",
-      nombreAcudiente: b.nombre_acudiente,
-      telefonoAcudiente: b.telefono_acudiente,
-      emailAcudiente: b.email_acudiente || "",
-      estado: b.estado || "Activo",
-      archivos: archivos.map((a: any) => ({
-        id: a.id,
-        nombre: a.nombre,
-        archivo: a.archivo,
-        tipo: a.tipo,
-        fechaSubida: a.fecha_subida,
-      })),
-    };
-
-    return NextResponse.json(beneficiario);
+    const document = await firestoreRequest(`beneficiarios/${encodeURIComponent(id)}`);
+    return NextResponse.json(documentToBeneficiario(document as FirestoreDocument), { status: 200 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Beneficiario no encontrado", details: error.message }, { status: 404 });
   }
 }
 
@@ -60,43 +49,30 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    const document = await firestoreRequest(`beneficiarios/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        fields: toFirestoreFields({
+          nombres: body.nombres || "",
+          apellidos: body.apellidos || "",
+          fechaNacimiento: body.fechaNacimiento || "",
+          edad: Number(body.edad || 0),
+          cedula: body.cedula || "",
+          genero: body.genero || "",
+          direccion: body.direccion || "",
+          barrio: body.barrio || "",
+          nombreAcudiente: body.nombreAcudiente || "",
+          telefonoAcudiente: body.telefonoAcudiente || "",
+          emailAcudiente: body.emailAcudiente || "",
+          estado: body.estado || "activo",
+          fechaIngreso: body.fechaIngreso || new Date().toISOString(),
+        }),
+      }),
+    });
 
-    const calcularEdad = (fecha: string) => {
-      const hoy = new Date();
-      const nacimiento = new Date(fecha);
-      let edad = hoy.getFullYear() - nacimiento.getFullYear();
-      const m = hoy.getMonth() - nacimiento.getMonth();
-      if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
-      return edad;
-    };
-
-    const edad = body.fechaNacimiento ? calcularEdad(body.fechaNacimiento) : 0;
-
-    await pool.query(
-      `UPDATE beneficiarios SET 
-        nombres=?, apellidos=?, fecha_nacimiento=?, edad=?, cedula=?, genero=?,
-        direccion=?, barrio=?, nombre_acudiente=?, telefono_acudiente=?, email_acudiente=?, estado=?
-       WHERE id=?`,
-      [
-        body.nombres,
-        body.apellidos,
-        body.fechaNacimiento,
-        edad,
-        body.cedula || null,
-        body.genero,
-        body.direccion,
-        body.barrio || null,
-        body.nombreAcudiente,
-        body.telefonoAcudiente,
-        body.emailAcudiente || null,
-        body.estado || "Activo",
-        id,
-      ],
-    );
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json(documentToBeneficiario(document as FirestoreDocument), { status: 200 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error al actualizar beneficiario", details: error.message }, { status: 500 });
   }
 }
 
@@ -104,20 +80,11 @@ export async function DELETE(
   _: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const client = await pool.getConnection();
   try {
     const { id } = await params;
-    await client.beginTransaction();
-
-    await client.query(`DELETE FROM archivos WHERE beneficiario_id = ?`, [id]);
-    await client.query(`DELETE FROM beneficiarios WHERE id = ?`, [id]);
-
-    await client.commit();
-    return NextResponse.json({ success: true });
+    await firestoreRequest(`beneficiarios/${encodeURIComponent(id)}`, { method: "DELETE" });
+    return NextResponse.json({ success: true, message: "Beneficiario eliminado correctamente" }, { status: 200 });
   } catch (error: any) {
-    await client.rollback();
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  } finally {
-    client.release();
+    return NextResponse.json({ error: "Error al eliminar beneficiario", details: error.message }, { status: 500 });
   }
 }

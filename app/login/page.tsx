@@ -4,8 +4,10 @@ import type React from "react";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { Eye, EyeOff, User } from "lucide-react";
 import Link from "next/link";
+import { auth } from "@/lib/firebase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,6 +41,8 @@ export default function LoginPage() {
 
       const data = await response.json();
 
+      await signInWithEmailAndPassword(auth, email, password);
+
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("isAuthenticated", "true");
 
@@ -64,7 +68,7 @@ export default function LoginPage() {
           {/* Logo circular que sobresale */}
           <div className="absolute -top-12 left-1/2 -translate-x-1/2">
             <img
-              src="/logo.png"
+              src="/logo senderos.png"
               className="w-24 h-24 object-cover rounded-full shadow-2xl border-4 border-white/40"
               alt="logo"
             />
