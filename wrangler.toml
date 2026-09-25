@@ -1,0 +1,12 @@
+name = "senderos-whatsapp-bot"
+compatibility_date = "2024-09-01"
+
+# Main entry point for the worker
+main = "src/index.js"
+
+# Uncomment and set a custom route if you have a domain
+# route = "https://your-domain.com/whatsapp-webhook"
+# zone_id = "YOUR_CLOUDFLARE_ZONE_ID"
+
+# Enable workers_dev for development (default true)
+workers_dev = true
