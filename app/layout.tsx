@@ -9,7 +9,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import "./globals.css";
 
-const SITE_URL = "https://senderosdeesperanza.com";
+const SITE_URL = "https://www.senderosdeesperanza.org";
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const metadata: Metadata = {

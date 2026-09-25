@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 // Requerido por Next.js con output: "export" para generar sitemap.xml como archivo estático.
 export const dynamic = "force-static";
 
-const SITE_URL = "https://senderosdeesperanza.com";
+const SITE_URL = "https://www.senderosdeesperanza.org";
 
 // El sitio usa exportación estática (output: "export") con trailingSlash: true,
 // así que las URLs reales terminan en "/" (excepto la portada).

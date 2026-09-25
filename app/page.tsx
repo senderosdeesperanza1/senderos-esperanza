@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { Home } from "@/components/home";
 import { sitio } from "@/components/navegacion";
 
-const SITE_URL = "https://senderosdeesperanza.com";
+const SITE_URL = "https://www.senderosdeesperanza.org";
 
 export const metadata: Metadata = {
-  // 53 caracteres: dentro del límite de 60 que suele mostrar Google en el buscador.
-  title: { absolute: "Educación y niñez en Bogotá | Senderos de Esperanza" },
+  // 53 caracteres: dentro del límite de 60 que suele mostrar Google en el buscador. 
+  title: { absolute: "Senderos de Esperanza | Educación, alimentación y esperanza para la niñez" },
   description:
     "Corporación Senderos de Esperanza: educación, seguridad alimentaria y bienestar para niñas, niños y jóvenes de 1 a 18 años y sus familias en Bogotá.",
   alternates: { canonical: "/" },

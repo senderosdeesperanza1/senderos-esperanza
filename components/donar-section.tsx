@@ -197,7 +197,8 @@ export default function DonarSection() {
         <div className="mx-auto max-w-6xl">
           {/* === Encabezado === */}
           <div className="max-w-3xl">
-            <h1 className="text-3xl font-bold text-[#ff5722] md:text-5xl">Esta En Desarrollo</h1>
+            <h1 className="text-3xl font-bold text-[#ff5722] md:text-5xl">Esta En Desarrollo
+            </h1>
             <h1
               id="donar-titulo"
               className="text-balance text-3xl font-bold tracking-tight text-[#1f2430] md:text-5xl"
